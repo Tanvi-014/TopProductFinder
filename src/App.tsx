@@ -8,6 +8,7 @@ import { VisualShowdown } from "./components/VisualShowdown";
 import { ProductDetail } from "./components/ProductDetail";
 import { FaqSection } from "./components/FaqSection";
 import { Product, SearchResult } from "./types";
+import { normalizeBuyOptions } from "./utils";
 import { AlertCircle, Loader2 } from "lucide-react";
 
 // Pre-loaded high-fidelity baseline wireless headphones consensus dataset
@@ -35,8 +36,10 @@ const DEFAULT_HEADPHONES_DATA: SearchResult = {
       cons: ["Does not fold fully flat", "Not water resistant"],
       verdict: "The absolute gold standard for noise isolation and comfort.",
       buyOptions: [
-        { retailer: "Amazon", price: "$348.00", url: "https://www.amazon.com/s?k=Sony+WH-1000XM5" },
-        { retailer: "Best Buy", price: "$349.99", url: "https://www.bestbuy.com/site/searchpage.jsp?st=Sony+WH-1000XM5" }
+        { retailer: "Amazon", price: "$348.00", url: "https://www.amazon.com/dp/B09XS7JWHH" },
+        { retailer: "Best Buy", price: "$349.99", url: "https://www.bestbuy.com/site/sony-wh-1000xm5-wireless-noise-canceling-over-the-ear-headphones-black/6505727.p" },
+        { retailer: "Walmart", price: "$348.00", url: "https://www.walmart.com/search?q=Sony%20WH-1000XM5" },
+        { retailer: "Sony Direct", price: "$349.99", url: "https://electronics.sony.com/audio/headphones/headband/p/wh1000xm5-b" }
       ],
       rank: 1,
       wishFeedback: "Premium tier choice: Flawlessly meets uncompromising workspace requirements."
@@ -60,7 +63,10 @@ const DEFAULT_HEADPHONES_DATA: SearchResult = {
       cons: ["ANC is slightly less adaptive", "Bulkier profile on-ears"],
       verdict: "An amazing budget alternative that punches far above its weight class.",
       buyOptions: [
-        { retailer: "Amazon", price: "$129.00", url: "https://www.amazon.com/s?k=Anker+Q45" }
+        { retailer: "Amazon", price: "$129.00", url: "https://www.amazon.com/s?k=Anker+Space+Q45" },
+        { retailer: "Best Buy", price: "$129.99", url: "https://www.bestbuy.com/site/searchpage.jsp?st=Anker%20Space%20Q45" },
+        { retailer: "Walmart", price: "$129.00", url: "https://www.walmart.com/search?q=Anker%20Space%20Q45" },
+        { retailer: "Soundcore Direct", price: "$149.99", url: "https://www.soundcore.com/products/space-q45-a3040011" }
       ],
       rank: 2,
       wishFeedback: "Excellent budget match! At $129, it fits price efficiency goals."
@@ -84,7 +90,10 @@ const DEFAULT_HEADPHONES_DATA: SearchResult = {
       cons: ["USB fast charger not included", "Slightly standard battery life"],
       verdict: "Perfect for corporate executives who demand plush active cushioning.",
       buyOptions: [
-        { retailer: "Amazon", price: "$329.00", url: "https://www.amazon.com/s?k=Bose+QC45" }
+        { retailer: "Amazon", price: "$329.00", url: "https://www.amazon.com/s?k=Bose+QuietComfort+45" },
+        { retailer: "Best Buy", price: "$329.99", url: "https://www.bestbuy.com/site/searchpage.jsp?st=Bose%20QuietComfort%2045" },
+        { retailer: "Walmart", price: "$329.00", url: "https://www.walmart.com/search?q=Bose%20QuietComfort%2045" },
+        { retailer: "Bose Direct", price: "$329.00", url: "https://www.bose.com/c/headphones" }
       ],
       rank: 3,
       wishFeedback: "Ideal fit for long commutes and absolute soft-arc headband comfort."
@@ -145,16 +154,7 @@ export default function App() {
           updatedCons.push("No integrated smart Wi-Fi companion settings out of the box");
         }
 
-        // Buy options URL safety
-        const updatedBuy = (p.buyOptions && p.buyOptions.length > 0 ? p.buyOptions : [
-          { retailer: "Amazon", price: p.price, url: "" }
-        ]).map((opt) => {
-          let url = opt.url;
-          if (!url || url === "#" || url === "" || url.includes("searchpage") || url.includes("searchTerm") || url.includes("google.com")) {
-            url = `https://www.amazon.com/s?k=${encodeURIComponent(p.name)}`;
-          }
-          return { ...opt, url };
-        });
+        const updatedBuy = normalizeBuyOptions(p, 4);
 
         return {
           ...p,

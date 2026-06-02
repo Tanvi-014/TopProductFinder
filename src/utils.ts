@@ -1,6 +1,79 @@
+import { BuyOption, Product } from "./types";
+
+const DEFAULT_RETAILERS = ["Amazon", "Best Buy", "Walmart", "Target"];
+
+function encodeProductQuery(productName: string) {
+  return encodeURIComponent(productName.trim());
+}
+
+export function getRetailerSearchUrl(retailer: string, productName: string): string {
+  const query = encodeProductQuery(productName);
+  const normalized = retailer.toLowerCase();
+
+  if (normalized.includes("amazon")) return `https://www.amazon.com/s?k=${query}`;
+  if (normalized.includes("best buy") || normalized.includes("bestbuy")) return `https://www.bestbuy.com/site/searchpage.jsp?st=${query}`;
+  if (normalized.includes("walmart")) return `https://www.walmart.com/search?q=${query}`;
+  if (normalized.includes("target")) return `https://www.target.com/s?searchTerm=${query}`;
+
+  return `https://www.google.com/search?q=${query}+${encodeURIComponent(retailer)}`;
+}
+
+export function getSafeBuyUrl(option: BuyOption | undefined, productName: string): string {
+  if (!option) return getRetailerSearchUrl("Amazon", productName);
+
+  try {
+    const url = new URL(option.url);
+    if (url.protocol === "http:" || url.protocol === "https:") {
+      return option.url;
+    }
+  } catch {
+    // Fall through to retailer-specific search.
+  }
+
+  return getRetailerSearchUrl(option.retailer || "Amazon", productName);
+}
+
+export function normalizeBuyOptions(product: Product, minimumOptions = 4): BuyOption[] {
+  const seenRetailers = new Set<string>();
+  const baseOptions = Array.isArray(product.buyOptions) ? product.buyOptions : [];
+
+  const normalized = baseOptions
+    .filter((option) => option && option.retailer)
+    .map((option) => {
+      const retailerKey = option.retailer.trim().toLowerCase();
+      seenRetailers.add(retailerKey);
+      return {
+        ...option,
+        price: option.price || product.price,
+        url: getSafeBuyUrl(option, product.name),
+      };
+    });
+
+  for (const retailer of DEFAULT_RETAILERS) {
+    if (normalized.length >= minimumOptions) break;
+    const retailerKey = retailer.toLowerCase();
+    if (seenRetailers.has(retailerKey)) continue;
+
+    normalized.push({
+      retailer,
+      price: product.price,
+      url: getRetailerSearchUrl(retailer, product.name),
+    });
+    seenRetailers.add(retailerKey);
+  }
+
+  return normalized;
+}
+
+export function getProductVisual(product: Product, category: string): string {
+  const visualContext = [product.name, product.brand, product.imageSearchQuery, category]
+    .filter(Boolean)
+    .join(" ");
+  return getProductImage(product.brand, product.name, visualContext);
+}
+
 /**
  * Curated high-resolution professional product photos from Unsplash matching top categories and brand keywords.
- * Incorporates referrerPolicy="no-referrer" constraints as specified by developer rules.
  */
 export function getProductImage(brand: string, name: string, category: string): string {
   const normBrand = brand.toLowerCase();

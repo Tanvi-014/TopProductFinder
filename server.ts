@@ -69,6 +69,35 @@ interface ProductResponse {
   isFallback: boolean;
 }
 
+const DEFAULT_RETAILERS = ["Amazon", "Best Buy", "Walmart", "Target"];
+
+function retailerSearchUrl(retailer: string, productName: string): string {
+  const query = encodeURIComponent(productName);
+  const normalized = retailer.toLowerCase();
+
+  if (normalized.includes("amazon")) return `https://www.amazon.com/s?k=${query}`;
+  if (normalized.includes("best buy") || normalized.includes("bestbuy")) return `https://www.bestbuy.com/site/searchpage.jsp?st=${query}`;
+  if (normalized.includes("walmart")) return `https://www.walmart.com/search?q=${query}`;
+  if (normalized.includes("target")) return `https://www.target.com/s?searchTerm=${query}`;
+
+  return `https://www.google.com/search?q=${query}+${encodeURIComponent(retailer)}`;
+}
+
+function safeBuyUrl(option: BuyOption | undefined, productName: string): string {
+  if (!option) return retailerSearchUrl("Amazon", productName);
+
+  try {
+    const parsed = new URL(option.url);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return option.url;
+    }
+  } catch {
+    // Use retailer-specific search when generated output is not a real URL.
+  }
+
+  return retailerSearchUrl(option.retailer || "Amazon", productName);
+}
+
 function sanitizeProducts(products: Product[], queryTerm: string): Product[] {
   if (!products || !Array.isArray(products)) return [];
   return products.map((p: Product) => {
@@ -81,21 +110,27 @@ function sanitizeProducts(products: Product[], queryTerm: string): Product[] {
     if (updatedCons.length < 1) updatedCons.push("Limited color options available at retail launch catalog");
     if (updatedCons.length < 2) updatedCons.push("No integrated smart Wi-Fi companion settings out of the box");
 
-    let updatedBuyOptions: BuyOption[] = Array.isArray(p.buyOptions) ? [...p.buyOptions] : [];
-    if (updatedBuyOptions.length === 0) {
+    const seenRetailers = new Set<string>();
+    let updatedBuyOptions: BuyOption[] = Array.isArray(p.buyOptions)
+      ? p.buyOptions
+          .filter((opt) => opt && opt.retailer)
+          .map((opt: BuyOption) => {
+            seenRetailers.add(opt.retailer.trim().toLowerCase());
+            return { ...opt, price: opt.price || p.price || "$299", url: safeBuyUrl(opt, p.name) };
+          })
+      : [];
+
+    for (const retailer of DEFAULT_RETAILERS) {
+      if (updatedBuyOptions.length >= 4) break;
+      const retailerKey = retailer.toLowerCase();
+      if (seenRetailers.has(retailerKey)) continue;
+
       updatedBuyOptions.push({
-        retailer: "Amazon",
+        retailer,
         price: p.price || "$299",
-        url: `https://www.amazon.com/s?k=${encodeURIComponent(p.name)}`,
+        url: retailerSearchUrl(retailer, p.name),
       });
-    } else {
-      updatedBuyOptions = updatedBuyOptions.map((opt: BuyOption) => {
-        let url = opt.url;
-        if (!url || url === "#" || url === "" || url.includes("searchpage") || url.includes("searchTerm") || url.includes("google.com")) {
-          url = `https://www.amazon.com/s?k=${encodeURIComponent(p.name)}`;
-        }
-        return { ...opt, url };
-      });
+      seenRetailers.add(retailerKey);
     }
 
     const imgQuery = encodeURIComponent(p.imageSearchQuery || p.name || queryTerm);

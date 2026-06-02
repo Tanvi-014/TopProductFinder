@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Product, SearchResult } from "../types";
-import { getProductImage } from "../utils";
-import { ArrowLeft, Check, X, ExternalLink, Sparkles, Building2, ShoppingBag, Facebook, MapPin, MessageSquare, Send, Star } from "lucide-react";
+import { getProductVisual, getSafeBuyUrl, normalizeBuyOptions } from "../utils";
+import { ArrowLeft, Check, X, ExternalLink, Sparkles, Building2, ShoppingBag, Facebook, MapPin, MessageSquare, Star } from "lucide-react";
 
 interface ProductDetailProps {
   product: Product;
@@ -15,8 +15,8 @@ export function ProductDetail({ product, result, onBack, onNavigateToProduct, is
   // Find peer contenders in the same search result category to hop between
   const peers = result.products.filter((p) => p.id !== product.id);
 
-  // Retrieve stock photo
-  const imageUrl = getProductImage(product.brand, product.name, result.category);
+  const imageUrl = getProductVisual(product, result.category);
+  const buyOptions = normalizeBuyOptions(product, 4);
 
   // Core Facebook Marketplace / Shop Deals simulation state variables
   const [fbOpen, setFbOpen] = useState(false);
@@ -90,9 +90,9 @@ export function ProductDetail({ product, result, onBack, onNavigateToProduct, is
     return chatMessages[sellerId] || [];
   };
 
-  const primaryBuyOpt = product.buyOptions && product.buyOptions[0];
+  const primaryBuyOpt = buyOptions[0];
   const primaryRetailer = primaryBuyOpt ? primaryBuyOpt.retailer : "Retailer";
-  const primaryUrl = primaryBuyOpt && primaryBuyOpt.url.startsWith("http") ? primaryBuyOpt.url : `https://www.amazon.com/s?k=${encodeURIComponent(product.name)}`;
+  const primaryUrl = getSafeBuyUrl(primaryBuyOpt, product.name);
 
   return (
     <div id="product-detail-subpage" className="space-y-12 animate-fade-in text-left">
@@ -107,6 +107,22 @@ export function ProductDetail({ product, result, onBack, onNavigateToProduct, is
           <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
           Back to all results
         </button>
+      </div>
+
+      <div className={`relative overflow-hidden border min-h-[260px] md:min-h-[360px] ${
+        isDark ? "bg-[#111113] border-[#222226]" : "bg-white border-stone-200"
+      }`}>
+        <img
+          src={imageUrl}
+          alt={`${product.name} product view`}
+          className="h-full min-h-[260px] md:min-h-[360px] w-full object-cover"
+          loading="eager"
+          referrerPolicy="no-referrer"
+        />
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-5 text-white">
+          <span className="text-[10px] font-mono uppercase tracking-widest text-amber-200 block">Product preview</span>
+          <p className="font-serif text-xl md:text-2xl font-extrabold leading-tight">{product.brand} {product.name}</p>
+        </div>
       </div>
 
       {/* Main split banner */}
@@ -208,7 +224,7 @@ export function ProductDetail({ product, result, onBack, onNavigateToProduct, is
                   }`}>
                     Wanna buy this?
                   </span>
-                  <p className={`text-xs font-medium ${isDark ? "text-stone-400" : "text-stone-600"}`}>We found the direct product page on {primaryRetailer}.</p>
+                  <p className={`text-xs font-medium ${isDark ? "text-stone-400" : "text-stone-600"}`}>Start with {primaryRetailer}, then compare the other store options below.</p>
                 </div>
                 <span className={`text-xs font-sans font-extrabold px-2.5 py-1 rounded-[1px] ${
                   isDark ? "text-amber-400 bg-amber-500/20" : "text-amber-955 bg-amber-200/50"
@@ -223,8 +239,24 @@ export function ProductDetail({ product, result, onBack, onNavigateToProduct, is
                 className="w-full bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-stone-955 text-xs py-3 font-extrabold tracking-wide transition-all select-none flex items-center justify-center gap-2 rounded-[2px]"
               >
                 <ShoppingBag className="h-3.5 w-3.5" />
-                <span>Direct Product Link: Go to {primaryRetailer} ({primaryBuyOpt ? primaryBuyOpt.price : product.price}) →</span>
+                <span>Shop at {primaryRetailer} ({primaryBuyOpt ? primaryBuyOpt.price : product.price})</span>
               </a>
+              <div className="grid grid-cols-2 gap-2">
+                {buyOptions.slice(1, 5).map((opt) => (
+                  <a
+                    key={`${opt.retailer}-${opt.url}`}
+                    href={getSafeBuyUrl(opt, product.name)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`flex items-center justify-between gap-2 border px-3 py-2 text-[11px] font-bold transition-colors ${
+                      isDark ? "border-[#3a321e] text-stone-300 hover:border-amber-400 hover:text-white" : "border-amber-200 text-stone-700 hover:border-stone-900 hover:text-stone-950"
+                    }`}
+                  >
+                    <span className="truncate">{opt.retailer}</span>
+                    <ExternalLink className="h-3 w-3 shrink-0 text-amber-500" />
+                  </a>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -360,11 +392,11 @@ export function ProductDetail({ product, result, onBack, onNavigateToProduct, is
         
         {/* Prime Retailers flex list */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-          {product.buyOptions && product.buyOptions.length > 0 ? (
-            product.buyOptions.map((opt, idx) => (
+          {buyOptions.length > 0 ? (
+            buyOptions.map((opt, idx) => (
               <a
                 key={idx}
-                href={opt.url.startsWith("http") ? opt.url : `https://www.amazon.com/s?k=${encodeURIComponent(product.name)}`}
+                href={getSafeBuyUrl(opt, product.name)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`flex items-center justify-between p-4 border transition-all text-sm font-sans font-medium group rounded-[2px] ${
@@ -376,8 +408,8 @@ export function ProductDetail({ product, result, onBack, onNavigateToProduct, is
                 <div className="flex items-center gap-2">
                   <ShoppingBag className="h-4 w-4 text-amber-500 shrink-0" />
                   <div className="text-left">
-                    <span className="block font-bold">Direct {opt.retailer} Page</span>
-                    <span className="block text-[10px] text-stone-400 font-mono">Guaranteed Exact Match</span>
+                    <span className="block font-bold">{opt.retailer}</span>
+                    <span className="block text-[10px] text-stone-400 font-mono">{idx === 0 ? "Best starting point" : "Compare price and stock"}</span>
                   </div>
                 </div>
                 <span className={`flex items-center gap-1.5 font-extrabold font-serif text-base ${isDark ? "text-amber-400" : "text-stone-955"}`}>

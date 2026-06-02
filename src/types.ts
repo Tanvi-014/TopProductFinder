@@ -21,6 +21,7 @@ export interface Product {
   price: string;
   rating: number;
   imageSearchQuery: string; // Query used to search or render placeholders/icons
+  imageUrl?: string;
   keyFeatures: string[];
   specs: ProductSpec[];
   pros: string[];

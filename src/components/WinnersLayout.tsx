@@ -1,6 +1,7 @@
 import React from "react";
 import { Product } from "../types";
 import { ExternalLink, ShoppingBag } from "lucide-react";
+import { getProductVisual, getSafeBuyUrl, normalizeBuyOptions } from "../utils";
 
 interface WinnersLayoutProps {
   products: Product[];
@@ -103,6 +104,8 @@ export function WinnersLayout({
 
   // Make sure we have a layout safety if winner is missing
   if (!winner) return null;
+  const winnerImage = getProductVisual(winner, category);
+  const winnerBuyOptions = normalizeBuyOptions(winner, 4);
 
   return (
     <div id="winners-section" className="space-y-8 animate-fade-in">
@@ -124,6 +127,25 @@ export function WinnersLayout({
             Editors' Pick
           </span>
         </div>
+
+        <button
+          type="button"
+          onClick={() => onSelectProduct(winner)}
+          className="relative mt-8 h-56 w-full overflow-hidden border cursor-pointer text-left group/image"
+        >
+          <img
+            src={winnerImage}
+            alt={`${winner.name} product preview`}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover/image:scale-105"
+            loading="lazy"
+            referrerPolicy="no-referrer"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+          <div className="absolute bottom-4 left-4 text-white">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-amber-200 block">Top visual pick</span>
+            <span className="font-serif text-xl font-extrabold">{winner.brand}</span>
+          </div>
+        </button>
 
         {/* Brand, Name, and Price Block */}
         <div className={`flex flex-row justify-between items-start pt-8 pb-6 border-b w-full ${
@@ -200,7 +222,7 @@ export function WinnersLayout({
               See full rating →
             </button>
             <a
-              href={winner.buyOptions && winner.buyOptions[0]?.url.startsWith("http") ? winner.buyOptions[0].url : `https://www.amazon.com/s?k=${encodeURIComponent(winner.name)}`}
+              href={getSafeBuyUrl(winnerBuyOptions[0], winner.name)}
               target="_blank"
               rel="noopener noreferrer"
               className="px-4 py-2 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-stone-955 text-xs font-extrabold tracking-wide transition-colors flex items-center gap-1.5 shrink-0 rounded-[2px]"
@@ -267,7 +289,7 @@ export function WinnersLayout({
                   See specs →
                 </button>
                 <a
-                  href={budgetPick.buyOptions && budgetPick.buyOptions[0]?.url.startsWith("http") ? budgetPick.buyOptions[0].url : `https://www.amazon.com/s?k=${encodeURIComponent(budgetPick.name)}`}
+              href={getSafeBuyUrl(normalizeBuyOptions(budgetPick, 4)[0], budgetPick.name)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-stone-955 text-[11px] font-extrabold tracking-wide transition-colors flex items-center gap-1 rounded-[2px]"
@@ -329,7 +351,7 @@ export function WinnersLayout({
                   See specs →
                 </button>
                 <a
-                  href={premiumPick.buyOptions && premiumPick.buyOptions[0]?.url.startsWith("http") ? premiumPick.buyOptions[0].url : `https://www.amazon.com/s?k=${encodeURIComponent(premiumPick.name)}`}
+                  href={getSafeBuyUrl(normalizeBuyOptions(premiumPick, 4)[0], premiumPick.name)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-stone-955 text-[11px] font-extrabold tracking-wide transition-colors flex items-center gap-1 rounded-[2px]"
