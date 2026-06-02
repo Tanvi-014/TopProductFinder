@@ -1,0 +1,6 @@
+{
+  "name": "Best Consumer Product Finder",
+  "description": "Find the best consumer products on the market, look up multiple purchasing options, and compare them based on price, brand, and features using real-time Web Search Grounded Gemini AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
